@@ -5,20 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Couple Game 💖</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <h1>Couple Game 💑</h1>
+        <div class="heart-bg"></div>
+        <h1>Tâm Linh Tương Thông 💑</h1>
         <div id="status">Đang kết nối...</div>
+        
         <div id="game" style="display: none;">
+            <div id="questionNumber" class="badge">Câu 1</div>
             <h2 id="questionText"></h2>
-            <div id="options"></div>
+            
+            <div id="inputContainer">
+                <!-- Nội dung các option hoặc ô text sẽ render ở đây -->
+            </div>
+            
+            <button id="submitBtn" class="btn-primary" style="display:none;">Chốt đáp án! 🔒</button>
+            <div id="waitMsg" style="display:none; color: #ff4d6d; margin-top: 15px; font-weight: bold;">
+                Đang đợi người yêu chốt... ⏳
+            </div>
+            
             <div id="result"></div>
         </div>
     </div>
     
-    <!-- Kết nối Socket.io -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
