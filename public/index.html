@@ -8,26 +8,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <div class="heart-bg"></div>
-        <h1>Tâm Linh Tương Thông 💑</h1>
-        <div id="status">Đang kết nối...</div>
+    <div class="layout-wrapper">
         
-        <div id="game" style="display: none;">
-            <div id="questionNumber" class="badge">Câu 1</div>
-            <h2 id="questionText"></h2>
+        <!-- Cột Game -->
+        <div class="game-container panel">
+            <h1>Tâm Linh Tương Thông 💑</h1>
+            <div id="status">Đang kết nối...</div>
             
-            <div id="inputContainer">
-                <!-- Nội dung các option hoặc ô text sẽ render ở đây -->
+            <div id="fullScreen" style="display: none;">
+                <h3 id="fullText"></h3>
+                <button id="resetBtn" class="btn-outline">Khởi động lại phòng (Nếu bị kẹt)</button>
             </div>
-            
-            <button id="submitBtn" class="btn-primary" style="display:none;">Chốt đáp án! 🔒</button>
-            <div id="waitMsg" style="display:none; color: #ff4d6d; margin-top: 15px; font-weight: bold;">
-                Đang đợi người yêu chốt... ⏳
+
+            <div id="game" style="display: none;">
+                <div id="questionNumber" class="badge">Câu 1</div>
+                <h2 id="questionText"></h2>
+                
+                <div id="inputContainer"></div>
+                
+                <button id="submitBtn" class="btn-primary" style="display:none;">Chốt đáp án! 🔒</button>
+                <div id="waitMsg" class="wait-msg" style="display:none;">Đang đợi người yêu chốt... ⏳</div>
+                
+                <div id="result"></div>
             </div>
-            
-            <div id="result"></div>
         </div>
+
+        <!-- Cột Chat -->
+        <div class="chat-container panel">
+            <div class="chat-header">Trò chuyện cùng nhau 💌</div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="chat-system">Phòng chat đã sẵn sàng!</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="Nhắn gì đó đi...">
+                <button id="sendChatBtn">Gửi</button>
+            </div>
+        </div>
+
     </div>
     
     <script src="/socket.io/socket.io.js"></script>

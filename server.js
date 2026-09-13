@@ -8,16 +8,14 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-let players = [];
-let playerChoices = {};
-let scores = {};
+let players = {}; // Lưu thông tin người chơi theo UID
 let currentQuestionIndex = 0;
+let gameStarted = false;
 
-// CẤU TRÚC CÂU HỎI ĐA NĂNG
+// Danh sách câu hỏi của bạn
 const questions = [
     {
-        id: 1,
-        type: "single", // Chọn 1 (2 đáp án)
+        id: 1, type: "single",
         question: "Cậu muốn gặp nhau bao nhiêu lần 1 tuần? 🥰",
         options: [
             { id: "A", text: "2-3 lần là đẹp" },
@@ -25,116 +23,124 @@ const questions = [
         ]
     },
     {
-        id: 2,
-        type: "single", // Chọn 1 (4 đáp án)
+        id: 2, type: "single",
         question: "Tớ thích ăn món gì cậu biết khum? 🤤",
         options: [
-            { id: "A", text: "Đồ Hàn" },
-            { id: "B", text: "Đồ Thái" },
-            { id: "C", text: "Đồ Âu" },
-            { id: "D", text: "Đồ Việt" }
+            { id: "A", text: "Đồ Hàn" }, { id: "B", text: "Đồ Thái" },
+            { id: "C", text: "Đồ Âu" }, { id: "D", text: "Đồ Việt" }
         ]
     },
     {
-        id: 3,
-        type: "single", // Chọn 1 (Có kèm ảnh theo phong cách thẻ Dating Idea)
-        question: "Dating Idea: Đưa cái này cho người yêu chọn nè! 🏖️",
-        options: [
-            { id: "A", text: "Bể bơi", image: "https://images.unsplash.com/photo-1576610616656-d3aa5d1f4534?w=400&q=80" }, // Bạn thay link ảnh thật vào đây
-            { id: "B", text: "Bồn tắm", image: "https://images.unsplash.com/photo-1507652313519-d4e9174996dd?w=400&q=80" }
-        ]
-    },
-    {
-        id: 4,
-        type: "multiple", // Chọn nhiều (Checkboxes)
+        id: 3, type: "multiple",
         question: "Em thích điều gì từ anh nhất? (Được chọn nhiều) 💖",
         options: [
-            { id: "A", text: "Giỏi thấu hiểu" },
-            { id: "B", text: "Trẻ trung (GenZ)" },
-            { id: "C", text: "Biết động viên" },
-            { id: "D", text: "Biết sửa lỗi" }
+            { id: "A", text: "Giỏi thấu hiểu" }, { id: "B", text: "Trẻ trung (GenZ)" },
+            { id: "C", text: "Biết động viên" }, { id: "D", text: "Biết sửa lỗi" }
         ]
     },
     {
-        id: 5,
-        type: "text", // Tự gõ đáp án
-        question: "Thử thách: Cùng gõ Biệt Danh bạn hay gọi người yêu ở nhà? ✍️",
-        // Không cần options cho dạng text
+        id: 4, type: "text",
+        question: "Thử thách: Cùng gõ Biệt Danh bạn hay gọi người yêu ở nhà? ✍️"
     }
 ];
 
 io.on('connection', (socket) => {
-    if (players.length >= 2) {
-        socket.emit('full', { message: "Phòng chơi đã đủ 2 người rồi nha! 💔" });
-        socket.disconnect();
-        return;
-    }
+    // Xử lý người chơi tham gia bằng ID cố định
+    socket.on('joinRoom', (data) => {
+        const uid = data.uid;
+        const activeUids = Object.keys(players);
 
-    players.push(socket.id);
-    scores[socket.id] = 0;
+        // Nếu người mới toanh vào mà phòng đã có 2 người khác
+        if (!players[uid] && activeUids.length >= 2) {
+            socket.emit('full', { message: "Phòng đã đủ 2 người rồi nha! 💔" });
+            return;
+        }
 
-    socket.emit('waiting', { message: "Đang chờ người ấy vào phòng... 💕" });
+        // Đăng ký hoặc cập nhật kết nối cho người chơi
+        if (!players[uid]) {
+            players[uid] = { socketId: socket.id, score: 0, currentChoice: null };
+        } else {
+            players[uid].socketId = socket.id; // Cập nhật lại kết nối nếu tải lại trang
+        }
 
-    if (players.length === 2) {
-        io.emit('gameStart', { message: "Ghép đôi thành công! Chuẩn bị chơi nhé! 💖" });
-        setTimeout(() => sendQuestion(), 2500);
-    }
+        // Gửi trạng thái chờ hoặc bắt đầu
+        if (Object.keys(players).length < 2) {
+            socket.emit('waiting', { message: "Đang chờ người ấy vào phòng... 💕" });
+        } else {
+            if (!gameStarted) {
+                gameStarted = true;
+                io.emit('gameStart', { message: "Đủ 2 người! Bắt đầu chơi nhé! 💖" });
+                setTimeout(() => sendQuestion(), 2000);
+            } else {
+                // Nếu tải lại trang lúc đang chơi, gửi lại câu hỏi hiện tại
+                socket.emit('newQuestion', questions[currentQuestionIndex]);
+            }
+        }
+    });
 
+    // Xử lý gửi tin nhắn Chat
+    socket.on('sendChat', (data) => {
+        // Gửi tin nhắn cho người còn lại
+        socket.broadcast.emit('receiveChat', { text: data.text });
+    });
+
+    // Xử lý nút Chốt đáp án
     socket.on('submitAnswer', (data) => {
-        playerChoices[socket.id] = data.answer; // Lưu cả string hoặc array
+        if (!players[data.uid]) return;
+        players[data.uid].currentChoice = data.answer;
 
-        if (Object.keys(playerChoices).length === 2) {
-            const p1 = players[0];
-            const p2 = players[1];
-            const ans1 = playerChoices[p1];
-            const ans2 = playerChoices[p2];
+        const activePlayers = Object.values(players);
+        // Kiểm tra xem cả 2 đã chọn xong chưa
+        const bothAnswered = activePlayers.length === 2 && activePlayers.every(p => p.currentChoice !== null);
+
+        if (bothAnswered) {
+            const p1 = activePlayers[0];
+            const p2 = activePlayers[1];
             const currentQ = questions[currentQuestionIndex];
 
-            // Hàm kiểm tra khớp đáp án linh hoạt
+            // So sánh
             let isMatch = false;
             if (currentQ.type === 'text') {
-                // Chuyển về chữ thường, xoá khoảng trắng thừa để so sánh
-                isMatch = (ans1 || "").toLowerCase().trim() === (ans2 || "").toLowerCase().trim();
+                isMatch = (p1.currentChoice || "").toLowerCase().trim() === (p2.currentChoice || "").toLowerCase().trim();
             } else if (currentQ.type === 'multiple') {
-                // So sánh mảng
-                isMatch = JSON.stringify((ans1 || []).sort()) === JSON.stringify((ans2 || []).sort());
+                isMatch = JSON.stringify((p1.currentChoice || []).sort()) === JSON.stringify((p2.currentChoice || []).sort());
             } else {
-                isMatch = ans1 === ans2;
+                isMatch = p1.currentChoice === p2.currentChoice;
             }
 
-            if (isMatch) {
-                scores[p1] += 10;
-                scores[p2] += 10;
-            }
+            if (isMatch) { p1.score += 10; p2.score += 10; }
 
-            // Xử lý hiển thị đáp án đẹp hơn
-            let displayAns1 = formatAnswer(ans1, currentQ);
-            let displayAns2 = formatAnswer(ans2, currentQ);
+            // Gửi kết quả về đúng thiết bị
+            io.to(p1.socketId).emit('roundResult', { 
+                isMatch, myScore: p1.score, 
+                myChoice: formatAnswer(p1.currentChoice, currentQ), 
+                otherChoice: formatAnswer(p2.currentChoice, currentQ) 
+            });
+            io.to(p2.socketId).emit('roundResult', { 
+                isMatch, myScore: p2.score, 
+                myChoice: formatAnswer(p2.currentChoice, currentQ), 
+                otherChoice: formatAnswer(p1.currentChoice, currentQ) 
+            });
 
-            io.to(p1).emit('roundResult', { isMatch, myScore: scores[p1], myChoice: displayAns1, otherChoice: displayAns2 });
-            io.to(p2).emit('roundResult', { isMatch, myScore: scores[p2], myChoice: displayAns2, otherChoice: displayAns1 });
-
-            playerChoices = {};
+            // Reset lựa chọn
+            p1.currentChoice = null; p2.currentChoice = null;
             currentQuestionIndex++;
 
             if (currentQuestionIndex < questions.length) {
-                setTimeout(() => sendQuestion(), 6000); 
+                setTimeout(() => sendQuestion(), 6000);
             } else {
                 setTimeout(() => {
-                    io.emit('gameOver', { message: "Trò chơi kết thúc! 🎉", finalScore: scores[p1] });
-                    currentQuestionIndex = 0; 
+                    io.emit('gameOver', { message: "Trò chơi kết thúc! 🎉", finalScore: p1.score });
+                    resetGame();
                 }, 6000);
             }
         }
     });
 
-    socket.on('disconnect', () => {
-        players = players.filter(id => id !== socket.id);
-        delete scores[socket.id];
-        delete playerChoices[socket.id];
-        io.emit('playerLeft', { message: "Người ấy đã thoát hoặc mất kết nối! 😢" });
-        currentQuestionIndex = 0;
-        playerChoices = {};
+    // Tính năng giải cứu: Reset phòng khi bị kẹt
+    socket.on('forceReset', () => {
+        resetGame();
+        io.emit('kicked'); // Đẩy tất cả ra để vào lại từ đầu
     });
 });
 
@@ -142,6 +148,12 @@ function sendQuestion() {
     if(questions[currentQuestionIndex]) {
         io.emit('newQuestion', questions[currentQuestionIndex]);
     }
+}
+
+function resetGame() {
+    players = {};
+    currentQuestionIndex = 0;
+    gameStarted = false;
 }
 
 function formatAnswer(ans, q) {
@@ -152,11 +164,10 @@ function formatAnswer(ans, q) {
     }
     if (q.type === 'multiple') {
         if (!ans || ans.length === 0) return "Không chọn gì 🥲";
-        let texts = ans.map(id => {
+        return ans.map(id => {
             let opt = q.options.find(o => o.id === id);
             return opt ? opt.text : id;
-        });
-        return texts.join(", ");
+        }).join(", ");
     }
 }
 
