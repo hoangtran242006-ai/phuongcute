@@ -99,3 +99,24 @@ h2 { font-weight: 700; font-size: 1.3em; margin-bottom: 25px; }
     .chat-messages { max-height: 250px; }
     .panel { padding: 20px; }
 }
+/* Nút điều khiển âm nhạc */
+.music-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #ff4d6d;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 30px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(255, 77, 109, 0.4);
+    transition: all 0.3s;
+    z-index: 1000;
+}
+.music-btn:hover {
+    transform: scale(1.1) translateY(-3px);
+    background: #c9184a;
+}

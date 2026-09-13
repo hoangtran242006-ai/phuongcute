@@ -134,3 +134,29 @@ sendChatBtn.onclick = () => {
 
 chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatBtn.click(); });
 socket.on('receiveChat', (data) => appendChat(data.text, 'other'));
+// --- LOGIC ÂM NHẠC ---
+const bgMusic = document.getElementById('bgMusic');
+const musicToggle = document.getElementById('musicToggle');
+let isMusicPlaying = false;
+
+// Đổi trạng thái khi bấm nút
+musicToggle.onclick = () => {
+    if (isMusicPlaying) {
+        bgMusic.pause();
+        musicToggle.innerText = '🎵 Bật nhạc';
+    } else {
+        bgMusic.play();
+        musicToggle.innerText = '🎶 Đang phát...';
+    }
+    isMusicPlaying = !isMusicPlaying;
+};
+
+// Mẹo nhỏ: Tự động phát nhạc ngay khi người chơi bấm vào bất cứ đâu trên màn hình lần đầu tiên
+document.body.addEventListener('click', () => {
+    if (!isMusicPlaying) {
+        bgMusic.play().then(() => {
+            isMusicPlaying = true;
+            musicToggle.innerText = '🎶 Đang phát...';
+        }).catch(() => {}); 
+    }
+}, { once: true });
