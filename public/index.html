@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Couple Game 💖</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>Couple Game 💑</h1>
+        <div id="status">Đang kết nối...</div>
+        <div id="game" style="display: none;">
+            <h2 id="questionText"></h2>
+            <div id="options"></div>
+            <div id="result"></div>
+        </div>
+    </div>
+    
+    <!-- Kết nối Socket.io -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
