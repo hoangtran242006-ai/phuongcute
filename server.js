@@ -13,9 +13,27 @@ let currentQuestionIndex = 0;
 let gameStarted = false;
 
 // Danh sách câu hỏi của bạn
+// Danh sách câu hỏi đầy đủ
 const questions = [
+    // --- PHẦN 1: THÓI QUEN & SỞ THÍCH ---
     {
         id: 1, type: "single",
+        question: "Cậu thích đi đâu hơn? 🛵",
+        options: [
+            { id: "A", text: "Đi ăn vỗ béo nhau 🍲" },
+            { id: "B", text: "Đi cà phê chụp hình sống ảo 📸" }
+        ]
+    },
+    {
+        id: 2, type: "multiple",
+        question: "Tớ thích ăn món gì cậu biết khum? (Được chọn nhiều) 🤤",
+        options: [
+            { id: "A", text: "Đồ Hàn" }, { id: "B", text: "Đồ Thái" },
+            { id: "C", text: "Đồ Âu" }, { id: "D", text: "Đồ Việt" }
+        ]
+    },
+    {
+        id: 3, type: "single",
         question: "Cậu muốn gặp nhau bao nhiêu lần 1 tuần? 🥰",
         options: [
             { id: "A", text: "2-3 lần là đẹp" },
@@ -23,24 +41,86 @@ const questions = [
         ]
     },
     {
-        id: 2, type: "single",
-        question: "Tớ thích ăn món gì cậu biết khum? 🤤",
+        id: 4, type: "single",
+        question: "Cậu thích đi du lịch ở đâu? ✈️",
         options: [
-            { id: "A", text: "Đồ Hàn" }, { id: "B", text: "Đồ Thái" },
-            { id: "C", text: "Đồ Âu" }, { id: "D", text: "Đồ Việt" }
+            { id: "A", text: "Lên núi ⛰️" },
+            { id: "B", text: "Xuống biển 🌊" }
         ]
     },
     {
-        id: 3, type: "multiple",
-        question: "Em thích điều gì từ anh nhất? (Được chọn nhiều) 💖",
+        id: 5, type: "single",
+        question: "Lúc giận nhau cậu sẽ làm gì? 😤",
         options: [
-            { id: "A", text: "Giỏi thấu hiểu" }, { id: "B", text: "Trẻ trung (GenZ)" },
-            { id: "C", text: "Biết động viên" }, { id: "D", text: "Biết sửa lỗi" }
+            { id: "A", text: "Im lặng, bình tĩnh rồi giải quyết" },
+            { id: "B", text: "Đang hăng bắt im không chịu được, vào cuộc luôn!" }
+        ]
+    },
+
+    // --- PHẦN 2: DATING IDEAS (Có ảnh minh họa) ---
+    {
+        id: 6, type: "single",
+        question: "Dating Idea: Cuối tuần này đưa người yêu đi... 🏃‍♂️🛌",
+        options: [
+            { id: "A", text: "Chạy bộ (-200 calo)", image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=400" },
+            { id: "B", text: "Homestay (-1000 calo)", image: "https://images.unsplash.com/photo-1522771731470-8ee6dfd71c82?q=80&w=400" }
         ]
     },
     {
-        id: 4, type: "text",
-        question: "Thử thách: Cùng gõ Biệt Danh bạn hay gọi người yêu ở nhà? ✍️"
+        id: 7, type: "single",
+        question: "Dating Idea: Chỗ nào chill hơn? 🏊‍♀️🛁",
+        options: [
+            { id: "A", text: "Bể bơi", image: "https://images.unsplash.com/photo-1519315901367-f34f8a556d86?q=80&w=400" },
+            { id: "B", text: "Bồn tắm", image: "https://images.unsplash.com/photo-1507652313519-d4e9174996dd?q=80&w=400" }
+        ]
+    },
+    {
+        id: 8, type: "single",
+        question: "Dating Idea: Tối nay ăn gì? 🍢🍳",
+        options: [
+            { id: "A", text: "Đồ ăn nhanh", image: "https://images.unsplash.com/photo-1585553616435-2dc0a54e271d?q=80&w=400" },
+            { id: "B", text: "Đồ ăn nhà làm", image: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=400" }
+        ]
+    },
+    {
+        id: 9, type: "single",
+        question: "Dating Idea: Hẹn hò xem phim ở đâu? 🍿🎬",
+        options: [
+            { id: "A", text: "Xem phim tại rạp", image: "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=400" },
+            { id: "B", text: "Xem phim tại nhà", image: "https://images.unsplash.com/photo-1585647347384-2593bc35786b?q=80&w=400" }
+        ]
+    },
+
+    // --- PHẦN 3: PHỎNG VẤN NGƯỜI YÊU ---
+    {
+        id: 10, type: "multiple",
+        question: "Em sẽ thích điều gì từ anh hơn? (Được chọn nhiều) 💖",
+        options: [
+            { id: "A", text: "Giỏi thấu hiểu" }, { id: "B", text: "Giỏi yêu chiều" },
+            { id: "C", text: "Trẻ trung (GenZ)" }, { id: "D", text: "Đàn ông (Menly)" },
+            { id: "E", text: "Kiểu giỡn nhây" }, { id: "F", text: "Kiểu chững chạc" },
+            { id: "G", text: "Biết động viên" }, { id: "H", text: "Biết sửa lỗi cho em" }
+        ]
+    },
+    {
+        id: 11, type: "single",
+        question: "Tính cách anh hơi khó hiểu đúng hong? 🤔",
+        options: [
+            { id: "A", text: "Hong đúng" }, { id: "B", text: "Đôi lúc" },
+            { id: "C", text: "Cũng đúng" }, { id: "D", text: "Rất đúng" }
+        ]
+    },
+    {
+        id: 12, type: "single",
+        question: "Lúc đầu tiếp cận anh có khó gần hong? 🧊",
+        options: [
+            { id: "A", text: "Hong đúng" }, { id: "B", text: "Đôi lúc" },
+            { id: "C", text: "Cũng đúng" }, { id: "D", text: "Rất đúng" }
+        ]
+    },
+    {
+        id: 13, type: "text",
+        question: "Câu cuối: Cùng gõ biệt danh mà bạn hay gọi người ấy ở nhà nào! ✍️"
     }
 ];
 
