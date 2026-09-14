@@ -3,55 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Couple Game 💖</title>
+    <title>Couple Room 💖</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="layout-wrapper">
-        
-        <!-- Cột Game -->
-        <div class="game-container panel">
-            <h1>Tâm Linh Tương Thông 💑</h1>
-            <div id="status">Đang kết nối...</div>
-            
-            <div id="fullScreen" style="display: none;">
-                <h3 id="fullText"></h3>
-                <button id="resetBtn" class="btn-outline">Khởi động lại phòng (Nếu bị kẹt)</button>
+    <div class="app-shell">
+        <div id="loginScreen" class="login-card panel">
+            <div class="brand-badge">💞 Bubu & Dudu room</div>
+            <h1>Couple Room</h1>
+            <p>Nhập tên và mã phòng để vào cùng người yêu của bạn nhé 💗</p>
+
+            <div class="field-group">
+                <label for="nicknameInput">Tên của bạn</label>
+                <input id="nicknameInput" class="input-box" type="text" maxlength="20" placeholder="Ví dụ: Dudu, Bubu..." />
             </div>
 
-            <div id="game" style="display: none;">
-                <div id="questionNumber" class="badge">Câu 1</div>
-                <h2 id="questionText"></h2>
-                
-                <div id="inputContainer"></div>
-                
-                <button id="submitBtn" class="btn-primary" style="display:none;">Chốt đáp án! 🔒</button>
-                <div id="waitMsg" class="wait-msg" style="display:none;">Đang đợi người yêu chốt... ⏳</div>
-                
-                <div id="result"></div>
+            <div class="field-group">
+                <label for="roomCodeInput">Mã phòng</label>
+                <input id="roomCodeInput" class="input-box" type="text" maxlength="6" placeholder="VD: PINK01" />
             </div>
+
+            <div class="action-row">
+                <button id="createRoomBtn" class="btn-primary">Tạo phòng mới</button>
+                <button id="joinRoomBtn" class="btn-secondary">Vào phòng</button>
+            </div>
+
+            <div class="sticker-row">
+                <button class="sticker-btn" data-sticker="💗 Bubu">💗 Bubu</button>
+                <button class="sticker-btn" data-sticker="✨ Dudu">✨ Dudu</button>
+                <button class="sticker-btn" data-sticker="💞 Loopy">💞 Loopy</button>
+                <button class="sticker-btn" data-sticker="🥰 Cute">🥰 Cute</button>
+            </div>
+
+            <div id="loginMessage" class="login-message"></div>
         </div>
 
-        <!-- Cột Chat -->
-        <div class="chat-container panel">
-            <div class="chat-header">Trò chuyện cùng nhau 💌</div>
-            <div class="chat-messages" id="chatMessages">
-                <div class="chat-system">Phòng chat đã sẵn sàng!</div>
+        <div id="gameLayout" class="layout-wrapper hidden">
+            <div class="game-container panel">
+                <div id="status">Đang kết nối...</div>
+
+                <div id="fullScreen" style="display: none;">
+                    <h3 id="fullText"></h3>
+                    <button id="resetBtn" class="btn-outline">Khởi động lại phòng</button>
+                </div>
+
+                <div id="game" style="display: none;">
+                    <div id="questionNumber" class="badge">Câu 1</div>
+                    <h2 id="questionText"></h2>
+
+                    <div id="inputContainer"></div>
+
+                    <button id="submitBtn" class="btn-primary" style="display:none;">Chốt đáp án! 🔒</button>
+                    <div id="waitMsg" class="wait-msg" style="display:none;">Đang đợi người yêu chốt... ⏳</div>
+
+                    <div id="result"></div>
+                </div>
             </div>
-            <div class="chat-input-area">
-                <input type="text" id="chatInput" placeholder="Nhắn gì đó đi...">
-                <button id="sendChatBtn">Gửi</button>
+
+            <div class="chat-container panel">
+                <div class="chat-header">Trò chuyện cùng nhau 💌</div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-system">Phòng chat đã sẵn sàng!</div>
+                </div>
+                <div class="sticker-strip">
+                    <button class="sticker-btn" data-sticker="💗 Bubu">💗 Bubu</button>
+                    <button class="sticker-btn" data-sticker="✨ Dudu">✨ Dudu</button>
+                    <button class="sticker-btn" data-sticker="💞 Loopy">💞 Loopy</button>
+                    <button class="sticker-btn" data-sticker="🥰 Cute">🥰 Cute</button>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="Nhắn gì đó đi...">
+                    <button id="sendChatBtn">Gửi</button>
+                </div>
             </div>
         </div>
-
     </div>
-    <!-- Thẻ âm thanh ẩn -->
+
     <audio id="bgMusic" loop>
         <source src="bgm.mp3" type="audio/mpeg">
     </audio>
 
-    <!-- Nút bật/tắt nhạc lơ lửng ở góc -->
     <button id="musicToggle" class="music-btn">🎵 Bật nhạc</button>
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
