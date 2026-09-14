@@ -18,10 +18,14 @@ body {
     margin: 0;
     min-height: 100vh;
     font-family: 'Quicksand', sans-serif;
-    background:
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.9), transparent 24%),
-        radial-gradient(circle at 80% 0%, rgba(255, 201, 223, 0.9), transparent 22%),
-        linear-gradient(135deg, #fff8fb 0%, #ffe6ef 28%, #ffd2e2 100%);
+    
+    /* Ảnh tự vẽ cho máy tính */
+    background-image: url('bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+
     color: var(--text);
     display: flex;
     align-items: center;
@@ -505,6 +509,13 @@ h2 {
     body {
         padding: 16px;
         align-items: flex-start;
+
+        /* Tắt ảnh vẽ và đưa về nền pastel trên mobile */
+        background-image: none;
+        background:
+            radial-gradient(circle at 20% 20%, rgba(255,255,255,0.9), transparent 24%),
+            radial-gradient(circle at 80% 0%, rgba(255, 201, 223, 0.9), transparent 22%),
+            linear-gradient(135deg, #fff8fb 0%, #ffe6ef 28%, #ffd2e2 100%);
     }
 
     .app-shell {
