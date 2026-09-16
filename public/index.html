@@ -14,8 +14,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
+    <canvas id="ambientCanvas"></canvas>
+    <div class="cursor-glow" aria-hidden="true"></div>
+    <div class="color-wash" aria-hidden="true"></div>
     <div class="app-shell">
         <div id="loginScreen" class="login-card panel">
+            <div class="login-atmosphere" aria-hidden="true">
+                <span class="atmosphere-orb orb-one"></span>
+                <span class="atmosphere-orb orb-two"></span>
+                <span class="atmosphere-orbit"></span>
+            </div>
+            <span class="login-spotlight" aria-hidden="true"></span>
             <div class="brand-badge">💞 Trắc nghiệm tình yêu</div>
             <h1>Love Test</h1>
             <p>Nhập tên và mã phòng để vào cùng người yêu của bạn nhé 💗</p>
@@ -31,9 +40,19 @@
             </div>
 
             <div class="action-row">
-                <button id="createRoomBtn" class="btn-primary">Tạo phòng mới</button>
-                <button id="joinRoomBtn" class="btn-secondary">Vào phòng</button>
+                <button id="createRoomBtn" class="btn-primary room-action" data-label="Tạo phòng mới" data-detail="Lấy mã mời ngay">
+                    <span class="action-icon">✦</span>
+                    <span class="action-copy"><span class="action-label">Tạo phòng mới</span><small class="action-detail">Lấy mã mời ngay</small></span>
+                    <span class="action-arrow" aria-hidden="true">→</span>
+                </button>
+                <button id="joinRoomBtn" class="btn-secondary room-action" data-label="Vào phòng" data-detail="Dùng mã người ấy gửi">
+                    <span class="action-icon">♡</span>
+                    <span class="action-copy"><span class="action-label">Vào phòng</span><small class="action-detail">Dùng mã người ấy gửi</small></span>
+                    <span class="action-arrow" aria-hidden="true">→</span>
+                </button>
             </div>
+
+            <div class="connection-note"><span class="connection-dot" aria-hidden="true"></span> Không gian riêng tư cho hai bạn</div>
 
             <div class="sticker-row">
                 <button class="sticker-btn" data-sticker="💗 Bubu">💗 Bubu</button>
@@ -46,7 +65,7 @@
         </div>
 
         <div id="gameLayout" class="layout-wrapper hidden">
-            <div class="game-container panel">
+            <div class="game-container panel" data-entrance="0" data-parallax="0.018">
                 <div id="status">Đang kết nối...</div>
 
                 <div id="fullScreen" style="display: none;">
@@ -67,7 +86,7 @@
                 </div>
             </div>
 
-            <div class="chat-container panel">
+            <div class="chat-container panel" data-entrance="1" data-parallax="0.038">
                 <div class="chat-header">Trò chuyện cùng nhau 💌</div>
                 <div class="chat-messages" id="chatMessages">
                     <div class="chat-system">Phòng chat đã sẵn sàng!</div>
@@ -79,10 +98,22 @@
                     <button class="sticker-btn" data-sticker="🥰 Cute">🥰 Cute</button>
                 </div>
                 <div class="chat-input-area">
+                    <label class="sr-only" for="chatInput">Tin nhắn</label>
                     <input type="text" id="chatInput" placeholder="Nhắn gì đó đi...">
                     <button id="sendChatBtn">Gửi</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="roomTransition" class="room-transition" aria-live="polite" aria-atomic="true">
+        <div class="transition-bloom" aria-hidden="true"></div>
+        <div class="transition-content">
+            <div class="transition-emblem" aria-hidden="true"><span>💗</span><i></i><b>✨</b></div>
+            <p id="transitionEyebrow" class="transition-eyebrow">Love Test</p>
+            <h2 id="transitionTitle">Đang mở không gian riêng</h2>
+            <p id="transitionDetail">Kết nối hai trái tim trong giây lát...</p>
+            <div class="transition-loader" aria-hidden="true"><span></span><span></span><span></span></div>
         </div>
     </div>
 
@@ -91,6 +122,7 @@
     </audio>
 
     <button id="musicToggle" class="music-btn">🎵 Bật nhạc</button>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
