@@ -9,6 +9,7 @@
     <meta name="keywords" content="game cap doi, game tinh yeu, trac nghiem cap doi, couple game online">
     <meta name="robots" content="index, follow">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="music-button.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700;800&display=swap" rel="stylesheet">
@@ -121,9 +122,28 @@
         <source src="bgm.mp3" type="audio/mpeg">
     </audio>
 
-    <button id="musicToggle" class="music-btn">🎵 Bật nhạc</button>
+    <div class="music-stage" aria-hidden="false">
+        <span class="music-particle particle-a"></span>
+        <span class="music-particle particle-b"></span>
+        <span class="music-particle particle-c"></span>
+
+        <button id="musicToggle" class="music-btn" type="button" aria-pressed="false" aria-label="Bật nhạc">
+            <span class="music-shine" aria-hidden="true"></span>
+            <span class="music-core">
+                <span class="music-icon">♫</span>
+                <span class="sound-wave" aria-hidden="true"><span></span><span></span><span></span></span>
+            </span>
+            <span class="music-label">Bật nhạc</span>
+            <span class="floating-note note-1" aria-hidden="true">♪</span>
+            <span class="floating-note note-2" aria-hidden="true">♫</span>
+            <span class="floating-note note-3" aria-hidden="true">♪</span>
+        </button>
+        <span class="music-orbit" aria-hidden="true"></span>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
+    <script src="music-button.js"></script>
 </body>
 </html>
