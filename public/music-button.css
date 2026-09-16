@@ -1,0 +1,260 @@
+/* =========================================================
+   PHUONGCUTE — ARTISTIC MUSIC BUTTON
+   Floating Glass / Pearl / Aurora
+   ========================================================= */
+
+.music-btn {
+    --music-x: 0px;
+    --music-y: 0px;
+    --music-rx: 0deg;
+    --music-ry: 0deg;
+    position: fixed !important;
+    right: 24px !important;
+    bottom: 20px !important;
+    z-index: 30 !important;
+    width: 174px;
+    height: 58px;
+    padding: 0 18px 0 10px !important;
+    display: flex !important;
+    align-items: center;
+    gap: 11px;
+    border: 0 !important;
+    border-radius: 22px !important;
+    color: rgba(255,255,255,.97) !important;
+    background: linear-gradient(135deg, rgba(255,255,255,.20), rgba(255,124,172,.23) 42%, rgba(183,30,91,.42)) !important;
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    box-shadow: 0 16px 34px rgba(190,52,105,.18), 0 3px 10px rgba(194,40,93,.10), inset 0 1px 0 rgba(255,255,255,.75), inset 0 -1px 0 rgba(255,255,255,.08) !important;
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 14px;
+    cursor: pointer;
+    isolation: isolate;
+    overflow: visible !important;
+    transform: translate3d(var(--music-x), var(--music-y), 0) rotateX(var(--music-rx)) rotateY(var(--music-ry));
+    transform-style: preserve-3d;
+    transition: transform .24s cubic-bezier(.2,.8,.2,1), box-shadow .4s ease, filter .3s ease;
+    animation: musicFloat 5s ease-in-out infinite;
+}
+
+.music-btn::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(from 0deg, rgba(255,255,255,.9), rgba(255,113,164,.66), rgba(255,255,255,.14), rgba(255,219,234,.84), rgba(255,255,255,.9));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: musicRim 7s linear infinite;
+    pointer-events: none;
+}
+
+.music-btn::after {
+    content: '';
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    left: -42px;
+    top: -58px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,.34), rgba(255,171,204,.12) 35%, transparent 68%);
+    filter: blur(3px);
+    transition: transform .8s cubic-bezier(.2,.8,.2,1), opacity .5s ease;
+    pointer-events: none;
+}
+
+.music-btn:hover {
+    transform: translate3d(var(--music-x), -3px, 0) rotateX(var(--music-rx)) rotateY(var(--music-ry)) scale(1.035) !important;
+    filter: brightness(1.05) saturate(1.08);
+    box-shadow: 0 20px 42px rgba(196,43,101,.25), 0 0 34px rgba(255,103,158,.18), 0 0 0 5px rgba(255,173,202,.10), inset 0 1px 0 rgba(255,255,255,.82) !important;
+}
+
+.music-btn:hover::after { transform: translate3d(95px,12px,0); }
+
+.music-shine {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.music-shine::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -90%;
+    width: 45%;
+    height: 100%;
+    transform: skewX(-20deg);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+}
+
+.music-btn:hover .music-shine::after { animation: musicShine .78s ease; }
+
+.music-core {
+    position: relative;
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: 15px;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.76), rgba(255,255,255,.22) 35%, rgba(255,111,160,.14));
+    border: 1px solid rgba(255,255,255,.45);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.58), 0 7px 16px rgba(145,30,79,.15);
+    transform: translateZ(20px);
+    transition: transform .45s cubic-bezier(.2,1.4,.4,1), box-shadow .45s ease, background .45s ease;
+    z-index: 3;
+}
+
+.music-icon {
+    font-size: 19px;
+    line-height: 1;
+    filter: drop-shadow(0 3px 5px rgba(127,18,66,.20));
+    transition: transform .45s cubic-bezier(.2,1.4,.4,1);
+}
+
+.music-label {
+    position: relative;
+    z-index: 3;
+    white-space: nowrap;
+    text-shadow: 0 2px 9px rgba(124,15,59,.18);
+    transform: translateZ(18px);
+}
+
+.sound-wave {
+    position: absolute;
+    left: 12px;
+    bottom: 6px;
+    width: 16px;
+    height: 8px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 2px;
+    opacity: .24;
+    transition: opacity .35s ease;
+}
+
+.sound-wave span { width: 2px; height: 3px; border-radius: 4px; background: rgba(255,255,255,.95); transform-origin: bottom; }
+
+.music-orbit {
+    position: absolute;
+    inset: -15px -14px;
+    border-radius: 30px;
+    border: 1px solid rgba(255,126,171,.15);
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.music-orbit::before {
+    content: '✦';
+    position: absolute;
+    right: 6px;
+    top: -9px;
+    color: rgba(255,255,255,.92);
+    font-size: 11px;
+    filter: drop-shadow(0 0 8px rgba(255,100,160,.72));
+}
+
+.music-orbit::after {
+    content: '';
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    right: 33px;
+    top: 5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.92);
+    box-shadow: 0 0 12px rgba(255,118,169,.78);
+}
+
+.floating-note {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    opacity: 0;
+    color: rgba(255,255,255,.96);
+    font-family: Georgia, serif;
+    font-weight: 700;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 8px rgba(149,31,75,.18));
+    z-index: 0;
+}
+
+.music-btn.is-playing {
+    box-shadow: 0 20px 42px rgba(196,43,101,.24), 0 0 38px rgba(255,76,143,.22), 0 0 75px rgba(255,130,175,.12), inset 0 1px 0 rgba(255,255,255,.82) !important;
+    animation: musicBreath 2.4s ease-in-out infinite;
+}
+
+.music-btn.is-playing::after { opacity: .85; animation: musicGlow 2.4s ease-in-out infinite; }
+
+.music-btn.is-playing .music-core {
+    background: radial-gradient(circle at 35% 25%, rgba(255,255,255,.82), rgba(255,119,169,.28) 42%, rgba(255,67,133,.20));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 0 18px rgba(255,94,151,.28);
+    animation: corePulse 1.5s ease-in-out infinite;
+}
+
+.music-btn.is-playing .music-icon { animation: noteDance .85s ease-in-out infinite; }
+.music-btn.is-playing .sound-wave { opacity: 1; }
+.music-btn.is-playing .sound-wave span:nth-child(1) { animation: waveA .55s ease-in-out infinite alternate; }
+.music-btn.is-playing .sound-wave span:nth-child(2) { animation: waveB .48s ease-in-out infinite alternate; }
+.music-btn.is-playing .sound-wave span:nth-child(3) { animation: waveC .60s ease-in-out infinite alternate; }
+.music-btn.is-playing .music-orbit { opacity: 1; animation: orbitGlow 2.8s ease-in-out infinite, orbitSpin 8s linear infinite; }
+.music-btn.is-playing .floating-note.note-1 { animation: noteFloatA 2.2s ease-out infinite; }
+.music-btn.is-playing .floating-note.note-2 { animation: noteFloatB 2.7s ease-out .7s infinite; }
+.music-btn.is-playing .floating-note.note-3 { animation: noteFloatC 2.4s ease-out 1.4s infinite; }
+
+.music-ripple {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.82);
+    pointer-events: none;
+    z-index: 4;
+    animation: musicRipple .7s cubic-bezier(.2,.8,.2,1) forwards;
+}
+
+@keyframes musicFloat { 0%,100% { translate: 0 0; } 50% { translate: 0 -3px; } }
+@keyframes musicRim { to { rotate: 360deg; } }
+@keyframes musicBreath { 0%,100% { scale: 1; } 50% { scale: 1.018; } }
+@keyframes musicGlow { 0%,100% { transform: scale(.95); opacity: .3; } 50% { transform: scale(1.12); opacity: .85; } }
+@keyframes corePulse { 0%,100% { scale: 1; } 50% { scale: 1.045; } }
+@keyframes noteDance { 0%,100% { transform: translateY(0) rotate(-5deg); } 50% { transform: translateY(-2px) rotate(6deg) scale(1.08); } }
+@keyframes waveA { to { height: 7px; } }
+@keyframes waveB { to { height: 10px; } }
+@keyframes waveC { to { height: 6px; } }
+@keyframes orbitSpin { to { rotate: 360deg; } }
+@keyframes orbitGlow { 0%,100% { transform: scale(.97); opacity: .35; } 50% { transform: scale(1.025); opacity: .85; } }
+@keyframes musicShine { from { transform: translateX(-20%); } to { transform: translateX(420%); } }
+@keyframes musicRipple { from { opacity: .85; transform: translate(-50%,-50%) scale(.5); } to { opacity: 0; transform: translate(-50%,-50%) scale(9); } }
+@keyframes noteFloatA { 0% { opacity:0; transform:translate(-5px,6px) scale(.5) rotate(-10deg); } 18% { opacity:.9; } 100% { opacity:0; transform:translate(-46px,-44px) scale(1.1) rotate(-22deg); } }
+@keyframes noteFloatB { 0% { opacity:0; transform:translate(3px,4px) scale(.5) rotate(8deg); } 18% { opacity:.85; } 100% { opacity:0; transform:translate(44px,-38px) scale(1.05) rotate(18deg); } }
+@keyframes noteFloatC { 0% { opacity:0; transform:translate(3px,2px) scale(.4); } 20% { opacity:.9; } 100% { opacity:0; transform:translate(59px,-3px) scale(1); } }
+
+@media (max-width: 768px) {
+    .music-btn { right: 16px !important; bottom: 16px !important; width: 158px; height: 52px; padding-right: 15px !important; }
+}
+
+@media (hover: none), (pointer: coarse) {
+    .music-btn:hover { transform: none !important; filter: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .music-btn,
+    .music-btn::before,
+    .music-btn::after,
+    .music-btn.is-playing,
+    .music-btn.is-playing::after,
+    .music-btn.is-playing .music-core,
+    .music-btn.is-playing .music-icon,
+    .music-btn.is-playing .music-orbit,
+    .floating-note,
+    .sound-wave span { animation: none !important; }
+}
