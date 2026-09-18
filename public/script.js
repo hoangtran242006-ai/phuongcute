@@ -661,31 +661,78 @@ submitBtn.addEventListener('click', () => {
 
 socket.on('roundResult', (data) => {
     waitMsg.style.display = 'none';
-    const resultTitle = data.isMatch
-        ? '<h2 style="color: #ff4d6d">Tuyệt vời! Tâm linh tương thông! 💖</h2>'
-        : '<h2 style="color: #7a7a7a">Ối, mỗi người một ý rồi! 😂</h2>';
+    const roundSimilarity = data.isMatch ? 100 : 0;
+    const totalQuestions = data.totalQuestions || 14;
+    const matchedCount = data.matchedCount ?? Math.round(data.myScore / 10);
+    const cumulativeSimilarity = Math.round((matchedCount / (data.questionNumber || 1)) * 100);
+    const resultTitle = data.isMatch ? 'Hai trái tim cùng nhịp! 💖' : 'Mỗi người một ý cũng đáng yêu mà! 🌷';
+    const resultMessage = data.isMatch ? 'Câu trả lời giống nhau hoàn toàn' : 'Câu này để dành dịp hiểu nhau hơn nhé';
 
-    resultDiv.innerHTML = `${resultTitle}
-        <div class="result-box">
-            <p>Bạn chọn: <b>${data.myChoice}</b></p>
-            <p>Người ấy chọn: <b>${data.otherChoice}</b></p>
-            <hr style="border: 1px dashed #ffb3c1;">
-            <p>Tổng điểm: <b style="color:#ff4d6d; font-size:1.3em;">${data.myScore}</b></p>
+    resultDiv.innerHTML = `
+        <div class="round-result-head ${data.isMatch ? 'is-match' : 'is-different'}">
+            <span class="result-kicker">Câu ${data.questionNumber || ''} / ${totalQuestions}</span>
+            <h2>${resultTitle}</h2>
+            <p>${resultMessage}</p>
         </div>
-        <div class="spinner" style="width: 28px; height: 28px;"></div>`;
+        <div class="similarity-card" style="--similarity: ${roundSimilarity}%">
+            <div class="similarity-orbit" aria-hidden="true"><span>💞</span></div>
+            <div class="similarity-value" data-value="${roundSimilarity}">0<small>%</small></div>
+            <div class="similarity-label">Độ tương đồng câu này</div>
+        </div>
+        <div class="result-box answer-compare">
+            <div class="answer-line"><span class="answer-label">Bạn chọn</span><b>${data.myChoice}</b></div>
+            <div class="answer-line"><span class="answer-label">Người ấy chọn</span><b>${data.otherChoice}</b></div>
+            <div class="result-progress"><span style="--progress: ${cumulativeSimilarity}%"></span></div>
+            <div class="progress-caption"><span>Độ tương đồng hiện tại</span><strong>${cumulativeSimilarity}%</strong></div>
+        </div>
+        <div class="spinner" aria-label="Chuẩn bị câu tiếp theo"></div>`;
     revealContent([...resultDiv.children]);
+    animateSimilarity(resultDiv.querySelector('.similarity-value'), roundSimilarity);
 });
 
 socket.on('gameOver', (data) => {
+    const similarity = data.similarity ?? Math.round((data.finalScore / 10 / (data.totalQuestions || 14)) * 100);
+    const matchedCount = data.matchedCount ?? Math.round(data.finalScore / 10);
+    const totalQuestions = data.totalQuestions || 14;
+    let summary = 'Càng chơi càng hiểu nhau hơn nhé! 🌱';
+    if (similarity >= 80) summary = 'Hai bạn đúng là sinh ra để hiểu nhau! ✨';
+    else if (similarity >= 50) summary = 'Một cặp đôi khá tâm linh đó nha! 💗';
     resultDiv.innerHTML = `
-        <div class="result-box final-box">
+        <div class="final-result">
+            <div class="final-confetti" aria-hidden="true"><span>✦</span><span>♡</span><span>✧</span><span>✦</span></div>
+            <span class="result-kicker">Hành trình của hai bạn đã khép lại</span>
             <h1>${data.message}</h1>
-            <h2>Điểm của bạn: ${data.finalScore} ❤️</h2>
-            <p>Điểm của người ấy: ${data.secondScore || 0} 💕</p>
+            <p class="final-summary">${summary}</p>
+            <div class="final-similarity-card">
+                <div class="similarity-ring" style="--similarity: ${similarity}%">
+                    <div class="similarity-ring-inner"><strong data-value="${similarity}">0</strong><span>%</span></div>
+                </div>
+                <div class="final-score-copy"><span>ĐỘ TƯƠNG ĐỒNG</span><b>${matchedCount} câu trả lời cùng nhịp</b><small>Hai bạn đã cùng chọn một đáp án trong ${matchedCount} câu.</small></div>
+            </div>
+            <div class="final-hearts" aria-hidden="true">💗 <i></i> 💞 <i></i> 💗</div>
         </div>`;
     burstHearts({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
     revealContent([...resultDiv.children]);
+    animateSimilarity(resultDiv.querySelector('[data-value]'), similarity);
 });
+
+function animateSimilarity(element, target) {
+    if (!element) return;
+    if (!canAnimate()) {
+        element.innerHTML = `${target}<small>%</small>`;
+        return;
+    }
+    const counter = { value: 0 };
+    gsap.to(counter, {
+        value: target,
+        duration: 1.25,
+        delay: 0.18,
+        ease: 'power2.out',
+        onUpdate: () => {
+            element.innerHTML = `${Math.round(counter.value)}<small>%</small>`;
+        }
+    });
+}
 
 function appendChat(text, type) {
     const div = document.createElement('div');

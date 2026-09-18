@@ -298,6 +298,9 @@ socket.on('sendChat', (data) => {
         io.to(p1.socketId).emit('roundResult', {
             isMatch,
             myScore: p1.score,
+            matchedCount: p1.score / 10,
+            questionNumber: currentQ.id,
+            totalQuestions: questions.length,
             myChoice: formatAnswer(p1.currentChoice, currentQ),
             otherChoice: formatAnswer(p2.currentChoice, currentQ)
         });
@@ -305,6 +308,9 @@ socket.on('sendChat', (data) => {
         io.to(p2.socketId).emit('roundResult', {
             isMatch,
             myScore: p2.score,
+            matchedCount: p2.score / 10,
+            questionNumber: currentQ.id,
+            totalQuestions: questions.length,
             myChoice: formatAnswer(p2.currentChoice, currentQ),
             otherChoice: formatAnswer(p1.currentChoice, currentQ)
         });
@@ -320,7 +326,10 @@ socket.on('sendChat', (data) => {
                 io.to(roomInfo.roomCode).emit('gameOver', {
                     message: 'Trò chơi kết thúc! 🎉',
                     finalScore: p1.score,
-                    secondScore: p2.score
+                    secondScore: p2.score,
+                    similarity: Math.round((p1.score / (questions.length * 10)) * 100),
+                    totalQuestions: questions.length,
+                    matchedCount: p1.score / 10
                 });
                 resetRoom(roomInfo.roomCode);
             }, 5000);
