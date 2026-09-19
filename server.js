@@ -46,7 +46,7 @@ function normalizeImageUrl(value) {
 async function readCachedAIQuestions() {
     try {
         const cachedQuestions = JSON.parse(await fs.readFile(aiQuestionsCachePath, 'utf8'));
-        if (!Array.isArray(cachedQuestions) || cachedQuestions.length !== 13) return null;
+        if (!Array.isArray(cachedQuestions) || cachedQuestions.length === 0) return null;
         return cachedQuestions.map((question) => ({
             ...question,
             ...(Array.isArray(question.options) ? {
@@ -226,9 +226,10 @@ async function generateAIQuestions() {
     }`;
 
     try {
+        const timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS) || 120000;
         const result = await Promise.race([
             model.generateContent(prompt),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Gemini phản hồi quá lâu.')), 30000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Gemini phản hồi quá lâu.')), timeoutMs))
         ]);
         let rawText = result.response.text();
 
@@ -236,9 +237,11 @@ async function generateAIQuestions() {
         rawText = rawText.replaceAll('```json', '').replaceAll('```', '').trim();
 
         const aiQuestions = JSON.parse(rawText);
-        if (!Array.isArray(aiQuestions) || aiQuestions.length !== 13) throw new Error('AI không trả về đúng 13 câu hỏi.');
+        if (!Array.isArray(aiQuestions) || aiQuestions.length === 0) {
+            throw new Error('AI không trả về câu hỏi hợp lệ.');
+        }
 
-        return aiQuestions.map((question, index) => {
+        const questions = aiQuestions.map((question, index) => {
             const type = ['single', 'multiple', 'text'].includes(question?.type) ? question.type : 'single';
             let options;
             if (type !== 'text') {
@@ -250,7 +253,7 @@ async function generateAIQuestions() {
                     }));
             }
 
-            if (type !== 'text' && options.length < 2) throw new Error(`Câu ${index + 1} thiếu đáp án hợp lệ.`);
+            if (type !== 'text' && options.length < 2) return null;
             return {
                 id: index + 1,
                 type,
@@ -258,7 +261,13 @@ async function generateAIQuestions() {
                 question: String(question?.question || `Câu hỏi ${index + 1}`).slice(0, 300),
                 ...(type === 'text' ? {} : { options })
             };
-        });
+        }).filter(Boolean);
+
+        if (questions.length === 0) throw new Error('AI không trả về câu hỏi có đáp án hợp lệ.');
+        if (questions.length < 13) {
+            console.warn(`AI trả về ${questions.length}/13 câu hỏi; tiếp tục với số câu hiện có.`);
+        }
+        return questions;
     } catch (error) {
         console.error("Lỗi khi tạo câu hỏi AI:", error);
         throw error;
@@ -426,8 +435,9 @@ io.on('connection', (socket) => {
 
         try {
             room.activeQuestions = data.mode === 'ai' ? await aiQuestionsReady : defaultQuestions;
-            const expectedQuestionCount = data.mode === 'ai' ? 13 : defaultQuestions.length;
-            if (room.activeQuestions?.length !== expectedQuestionCount) throw new Error(`Bộ câu hỏi phải có đúng ${expectedQuestionCount} câu.`);
+            if (!Array.isArray(room.activeQuestions) || room.activeQuestions.length === 0) {
+                throw new Error('Không có câu hỏi hợp lệ để bắt đầu trò chơi.');
+            }
             io.to(roomInfo.roomCode).emit('gameStart', { message: 'Đủ 2 người! Bắt đầu chơi nhé! 💖' });
             setTimeout(() => sendQuestion(roomInfo.roomCode), 1000);
         } catch (error) {
