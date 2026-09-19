@@ -18,6 +18,7 @@
     <canvas id="ambientCanvas"></canvas>
     <div class="cursor-glow" aria-hidden="true"></div>
     <div class="color-wash" aria-hidden="true"></div>
+    <div id="sceneWipe" aria-hidden="true"></div>
     <div class="app-shell">
         <div id="loginScreen" class="login-card panel">
             <div class="login-atmosphere" aria-hidden="true">
@@ -69,6 +70,22 @@
             <div class="game-container panel" data-entrance="0" data-parallax="0.018">
                 <div id="status">Đang kết nối...</div>
 
+                <div id="modeSelectScreen" style="display: none;">
+                    <h3>Chọn bộ câu hỏi cho buổi hẹn hò:</h3>
+                    <div class="mode-options">
+                        <div class="mode-card" id="modeDefaultBtn">
+                            <div class="mode-icon">📖</div>
+                            <h4>13 Câu Mặc Định</h4>
+                            <p>Bộ câu hỏi ngọt ngào, chuẩn gu.</p>
+                        </div>
+                        <div class="mode-card ai" id="modeAiBtn">
+                            <div class="mode-icon">✨</div>
+                            <h4>13 Câu Ngẫu Nhiên AI</h4>
+                            <p>Sáng tạo độc quyền, không trùng lặp!</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="fullScreen" style="display: none;">
                     <h3 id="fullText"></h3>
                     <button id="resetBtn" class="btn-outline">Khởi động lại phòng</button>
@@ -80,7 +97,28 @@
 
                     <div id="inputContainer"></div>
 
-                    <button id="submitBtn" class="btn-primary" style="display:none;">Chốt đáp án! 🔒</button>
+                    <div class="answer-luxe-wrap">
+                        <button id="submitBtn" class="answer-luxe" style="display:none;" type="button" aria-label="Chốt đáp án">
+                            <span class="luxe-liquid liquid-left" aria-hidden="true"></span>
+                            <span class="luxe-liquid liquid-right" aria-hidden="true"></span>
+                            <span class="luxe-liquid liquid-center" aria-hidden="true"></span>
+                            <span class="pearl-glow" aria-hidden="true"></span>
+                            <span class="silk-wave silk-wave-1" aria-hidden="true"></span>
+                            <span class="silk-wave silk-wave-2" aria-hidden="true"></span>
+                            <span class="glass-top" aria-hidden="true"></span>
+                            <span class="glass-sheen" aria-hidden="true"></span>
+                            <span class="glass-border" aria-hidden="true"></span>
+                            <span class="tiny-light tl-1" aria-hidden="true"></span>
+                            <span class="tiny-light tl-2" aria-hidden="true"></span>
+                            <span class="tiny-light tl-3" aria-hidden="true"></span>
+                            <span class="luxe-spark ls-1" aria-hidden="true">✦</span>
+                            <span class="luxe-spark ls-2" aria-hidden="true">✧</span>
+                            <span class="luxe-spark ls-3" aria-hidden="true">·</span>
+                            <span class="answer-luxe-icon" aria-hidden="true"><span class="icon-heart">💌</span></span>
+                            <span class="answer-luxe-text"><span class="answer-luxe-title">Chốt đáp án</span><span class="answer-luxe-subtitle">Gửi tín hiệu cho người ấy</span></span>
+                            <span class="answer-luxe-action" aria-hidden="true"><span>→</span></span>
+                        </button>
+                    </div>
                     <div id="waitMsg" class="wait-msg" style="display:none;">Đang đợi người yêu chốt... ⏳</div>
 
                     <div id="result"></div>

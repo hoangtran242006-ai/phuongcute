@@ -35,6 +35,17 @@
     transform-style: preserve-3d;
     transition: transform .24s cubic-bezier(.2,.8,.2,1), box-shadow .4s ease, filter .3s ease;
     animation: musicFloat 5s ease-in-out infinite;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+}
+
+.music-btn:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.music-btn:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.92);
+    outline-offset: 4px;
 }
 
 .music-btn::before {
@@ -240,6 +251,7 @@
 
 @media (max-width: 768px) {
     .music-btn { right: 16px !important; bottom: 16px !important; width: 158px; height: 52px; padding-right: 15px !important; }
+    .music-orbit { display: none !important; }
 }
 
 @media (hover: none), (pointer: coarse) {

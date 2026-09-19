@@ -1,9 +1,19 @@
+require('dotenv').config();
+
 const express = require('express');
 const http = require('node:http');
+const { randomInt } = require('node:crypto');
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const { Writable } = require('node:stream');
 const { Server } = require('socket.io');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const app = express();
 const server = http.createServer(app);
+const aiQuestionsCachePath = path.join(__dirname, 'ai-questions-cache.json');
 const io = new Server(server, {
     cors: {
         origin: '*'
@@ -11,12 +21,63 @@ const io = new Server(server, {
 });
 
 app.use(express.static('public'));
+const IMAGE_HOSTS = new Set([
+    'images.unsplash.com',
+    'gotour.com.vn',
+    'vinsen.vn',
+    'timviec365.vn',
+    'giadinh.mediacdn.vn'
+]);
+
+function normalizeImageUrl(value) {
+    if (typeof value !== 'string') return '';
+    const markdownMatch = /\]\((https?:\/\/[^)]+)\)/i.exec(value);
+    const rawUrl = markdownMatch ? markdownMatch[1] : value.trim();
+
+    try {
+        const imageUrl = new URL(rawUrl);
+        if (imageUrl.protocol !== 'https:' || !IMAGE_HOSTS.has(imageUrl.hostname)) return '';
+        return imageUrl.toString();
+    } catch {
+        return '';
+    }
+}
+
+async function readCachedAIQuestions() {
+    try {
+        const cachedQuestions = JSON.parse(await fs.readFile(aiQuestionsCachePath, 'utf8'));
+        if (!Array.isArray(cachedQuestions) || cachedQuestions.length !== 13) return null;
+        return cachedQuestions.map((question) => ({
+            ...question,
+            ...(Array.isArray(question.options) ? {
+                options: question.options.map(({ image, ...option }) => option)
+            } : {})
+        }));
+    } catch {
+        return null;
+    }
+}
+
+app.get('/image-proxy', async (req, res) => {
+    const imageUrl = normalizeImageUrl(req.query.url);
+    if (!imageUrl) return res.status(400).send('Invalid image URL');
+
+    try {
+        const response = await fetch(imageUrl, { signal: AbortSignal.timeout(12000) });
+        if (!response.ok || !response.body) return res.status(response.status || 502).end();
+        res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+        res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+        response.body.pipeTo(Writable.toWeb(res)).catch(() => res.end());
+    } catch {
+        res.status(502).end();
+    }
+});
 
 app.get('/health', (_req, res) => {
     res.status(200).json({ ok: true, service: 'couple-game' });
 });
 
-const questions = [
+const defaultQuestions = [
     // --- PHẦN 1: THÓI QUEN & SỞ THÍCH ---
     {
         id: 1, type: "single",
@@ -127,23 +188,107 @@ const questions = [
     // --- PHẦN 4: THỬ THÁCH NHẬP CHỮ (ĐÃ FIX LOGIC) ---
     {
         id: 13, type: "text",
+        textMatchRequired: true,
         question: "Thử thách 1: Cả hai hãy cùng nhập BIỆT DANH ở nhà của BẠN GÁI! 👧✍️"
     },
     {
         id: 14, type: "text",
+        textMatchRequired: true,
         question: "Thử thách 2: Cả hai hãy cùng nhập BIỆT DANH ở nhà của BẠN TRAI! 👦✍️"
-    }
+    },
 ];
 
 const rooms = {};
 const socketPlayerMap = new Map();
+const NEXT_QUESTION_DELAY = 6000;
+async function generateAIQuestions() {
+    // Đảm bảo bạn đang dùng model gemini-2.5-flash
+    const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+    });
 
-// 1. Thay thế hàm tạo mã phòng để không bị phụ thuộc vào crypto
+    const prompt = `Bạn là một chuyên gia tâm lý tình yêu và thiết kế trò chơi cho các cặp đôi.
+    Hãy tạo một mảng JSON gồm đúng 13 câu hỏi trắc nghiệm tiếng Việt dành riêng cho cặp đôi đang yêu nhau chơi cùng nhau.
+    Mục tiêu: Kiểm tra độ hiểu nhau, tăng sự gắn kết và tạo hứng khởi, có 1 chút gia vị 18+ (gợi cảm, táo bạo).
+
+    YÊU CẦU NỘI DUNG (CỰC KỲ QUAN TRỌNG):
+    1. Chủ đề: 100% xoay quanh tình yêu, thói quen hẹn hò, nụ hôn, sở thích đi date, món ăn và dịa điểm yêu thích, thích làm gì trong tình yêu, kỉ niệm của 2 người, tình huống hẹn hò, hiểu nhau và cảm xúc...
+    2. Dạng "text" (tự nhập): Có thể tạo câu cần hai người trả lời giống nhau hoặc câu tự do không cần giống nhau. Gắn "textMatchRequired": true cho câu cần trùng khớp, false cho câu tự do. Câu trả lời nên ngắn gọn.
+    3. Dạng "single" (chọn 1) và "multiple" (chọn nhiều): Chiếm 12 câu. Đáp án thực tế, thú vị, gen z.
+    Trả về ĐÚNG 1 mảng JSON [] chứa 13 object, KHÔNG kèm markdown \`\`\`json ở đầu.
+    {
+        "id": 1,
+        "type": "single", // hoặc "multiple", "text"
+        "textMatchRequired": true, // chỉ dùng cho type text
+        "question": "Nội dung câu hỏi táo bạo...",
+        "options": [ {"id": "A", "text": "Đáp án 1"}, {"id": "B", "text": "Đáp án 2"} ]
+    }`;
+
+    try {
+        const result = await Promise.race([
+            model.generateContent(prompt),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Gemini phản hồi quá lâu.')), 30000))
+        ]);
+        let rawText = result.response.text();
+
+        // Dọn dẹp markdown nếu AI lỡ sinh ra
+        rawText = rawText.replaceAll('```json', '').replaceAll('```', '').trim();
+
+        const aiQuestions = JSON.parse(rawText);
+        if (!Array.isArray(aiQuestions) || aiQuestions.length !== 13) throw new Error('AI không trả về đúng 13 câu hỏi.');
+
+        return aiQuestions.map((question, index) => {
+            const type = ['single', 'multiple', 'text'].includes(question?.type) ? question.type : 'single';
+            let options;
+            if (type !== 'text') {
+                options = (Array.isArray(question.options) ? question.options : [])
+                    .slice(0, 6)
+                    .map((option, optionIndex) => ({
+                        id: String(option?.id || String.fromCodePoint(65 + optionIndex)).slice(0, 2),
+                        text: String(option?.text || `Lựa chọn ${optionIndex + 1}`).slice(0, 180),
+                    }));
+            }
+
+            if (type !== 'text' && options.length < 2) throw new Error(`Câu ${index + 1} thiếu đáp án hợp lệ.`);
+            return {
+                id: index + 1,
+                type,
+                ...(type === 'text' ? { textMatchRequired: question?.textMatchRequired !== false } : {}),
+                question: String(question?.question || `Câu hỏi ${index + 1}`).slice(0, 300),
+                ...(type === 'text' ? {} : { options })
+            };
+        });
+    } catch (error) {
+        console.error("Lỗi khi tạo câu hỏi AI:", error);
+        throw error;
+    }
+}
+
+async function prepareAIQuestions() {
+    const cachedQuestions = await readCachedAIQuestions();
+    if (cachedQuestions) {
+        console.log('Đã nạp bộ câu hỏi AI từ cache.');
+        return cachedQuestions;
+    }
+
+    console.log('Đang chuẩn bị bộ câu hỏi AI khi server khởi động...');
+    const questions = await generateAIQuestions();
+    await fs.writeFile(aiQuestionsCachePath, JSON.stringify(questions, null, 2), 'utf8');
+    console.log('Đã chuẩn bị bộ câu hỏi AI không kèm ảnh.');
+    return questions;
+}
+
+const aiQuestionsReady = prepareAIQuestions().catch((error) => {
+    console.error('Không thể chuẩn bị bộ câu hỏi AI lúc khởi động:', error.message);
+    return null;
+});
+
 function generateRoomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
     for (let i = 0; i < 6; i += 1) {
-        code += chars[Math.floor(Math.random() * chars.length)];
+        code += chars[randomInt(chars.length)];
     }
     return code;
 }
@@ -157,7 +302,8 @@ function getRoom(roomCode) {
         rooms[roomCode] = {
             players: {},
             currentQuestionIndex: 0,
-            gameStarted: false
+            gameStarted: false,
+            activeQuestions: []
         };
     }
     return rooms[roomCode];
@@ -165,8 +311,8 @@ function getRoom(roomCode) {
 
 function sendQuestion(roomCode) {
     const room = rooms[roomCode];
-    if (!room || !questions[room.currentQuestionIndex]) return;
-    io.to(roomCode).emit('newQuestion', questions[room.currentQuestionIndex]);
+    if (!room?.activeQuestions?.[room.currentQuestionIndex]) return;
+    io.to(roomCode).emit('newQuestion', room.activeQuestions[room.currentQuestionIndex]);
 }
 
 function resetRoom(roomCode) {
@@ -174,6 +320,7 @@ function resetRoom(roomCode) {
     rooms[roomCode].players = {};
     rooms[roomCode].currentQuestionIndex = 0;
     rooms[roomCode].gameStarted = false;
+    rooms[roomCode].activeQuestions = [];
     delete rooms[roomCode];
 }
 
@@ -191,6 +338,22 @@ function formatAnswer(ans, q) {
         }).join(', ');
     }
     return String(ans || '');
+}
+
+function getSimilarityPercent(firstAnswer, secondAnswer, question) {
+    if (question.type === 'text') {
+        return (firstAnswer || '').toLowerCase().trim() === (secondAnswer || '').toLowerCase().trim() ? 100 : 0;
+    }
+
+    if (question.type === 'multiple') {
+        const firstChoices = [...new Set(firstAnswer || [])];
+        const secondChoices = [...new Set(secondAnswer || [])];
+        const sharedChoices = firstChoices.filter((choice) => secondChoices.includes(choice)).length;
+        const comparedChoices = Math.max(firstChoices.length, secondChoices.length);
+        return comparedChoices ? Math.round((sharedChoices / comparedChoices) * 100) : 0;
+    }
+
+    return firstAnswer === secondAnswer ? 100 : 0;
 }
 
 io.on('connection', (socket) => {
@@ -243,11 +406,37 @@ io.on('connection', (socket) => {
         if (Object.keys(room.players).length < 2) {
             io.to(targetCode).emit('waiting', { message: 'Đang chờ người ấy vào phòng... 💕' });
         } else if (!room.gameStarted) {
-            room.gameStarted = true;
-            io.to(targetCode).emit('gameStart', { message: 'Đủ 2 người! Bắt đầu chơi nhé! 💖' });
-            setTimeout(() => sendQuestion(targetCode), 2000);
+            io.to(targetCode).emit('showModeSelect');
         } else {
-            socket.emit('newQuestion', questions[room.currentQuestionIndex]);
+            socket.emit('newQuestion', room.activeQuestions[room.currentQuestionIndex]);
+        }
+    });
+
+    socket.on('selectMode', async (data) => {
+        const roomInfo = socketPlayerMap.get(socket.id);
+        if (!roomInfo || !['default', 'ai'].includes(data?.mode)) return;
+
+        const room = rooms[roomInfo.roomCode];
+        if (!room || Object.keys(room.players).length !== 2 || room.gameStarted) return;
+
+        room.gameStarted = true;
+        io.to(roomInfo.roomCode).emit('loadingQuestions', {
+            message: data.mode === 'ai' ? 'Đang tải câu hỏi A.I...' : 'Đang chuẩn bị câu hỏi...'
+        });
+
+        try {
+            room.activeQuestions = data.mode === 'ai' ? await aiQuestionsReady : defaultQuestions;
+            const expectedQuestionCount = data.mode === 'ai' ? 13 : defaultQuestions.length;
+            if (room.activeQuestions?.length !== expectedQuestionCount) throw new Error(`Bộ câu hỏi phải có đúng ${expectedQuestionCount} câu.`);
+            io.to(roomInfo.roomCode).emit('gameStart', { message: 'Đủ 2 người! Bắt đầu chơi nhé! 💖' });
+            setTimeout(() => sendQuestion(roomInfo.roomCode), 1000);
+        } catch (error) {
+            room.gameStarted = false;
+            room.activeQuestions = [];
+            io.to(roomInfo.roomCode).emit('questionError', {
+                message: 'Không thể tải bộ câu hỏi A.I. Hãy thử chọn lại nhé.'
+            });
+            console.error('Không thể tạo câu hỏi A.I.:', error.message);
         }
     });
 
@@ -268,7 +457,7 @@ socket.on('sendChat', (data) => {
         if (!roomInfo || !data) return;
 
         const room = rooms[roomInfo.roomCode];
-        if (!room || !room.players || !room.players[data.uid]) return;
+        if (!room?.players?.[data.uid]) return;
 
         room.players[data.uid].currentChoice = data.answer;
 
@@ -279,38 +468,43 @@ socket.on('sendChat', (data) => {
 
         const p1 = activePlayers[0];
         const p2 = activePlayers[1];
-        const currentQ = questions[room.currentQuestionIndex];
+        const currentQ = room.activeQuestions[room.currentQuestionIndex];
+        if (!currentQ) return;
 
-        let isMatch = false;
-        if (currentQ.type === 'text') {
-            isMatch = (p1.currentChoice || '').toLowerCase().trim() === (p2.currentChoice || '').toLowerCase().trim();
-        } else if (currentQ.type === 'multiple') {
-            isMatch = JSON.stringify((p1.currentChoice || []).slice().sort()) === JSON.stringify((p2.currentChoice || []).slice().sort());
-        } else {
-            isMatch = p1.currentChoice === p2.currentChoice;
-        }
-
-        if (isMatch) {
-            p1.score += 10;
-            p2.score += 10;
-        }
+        const textMatchRequired = currentQ.type !== 'text' || currentQ.textMatchRequired !== false;
+        const similarityPercent = textMatchRequired
+            ? getSimilarityPercent(p1.currentChoice, p2.currentChoice, currentQ)
+            : 100;
+        const isMatch = similarityPercent === 100;
+        const similarityPoints = similarityPercent / 10;
+        p1.score += similarityPoints;
+        p2.score += similarityPoints;
+        const cumulativeSimilarity = Math.round((p1.score / (currentQ.id * 10)) * 100);
 
         io.to(p1.socketId).emit('roundResult', {
             isMatch,
+            textMatchRequired,
+            similarityPercent,
+            cumulativeSimilarity,
+            nextQuestionDelay: NEXT_QUESTION_DELAY,
             myScore: p1.score,
             matchedCount: p1.score / 10,
             questionNumber: currentQ.id,
-            totalQuestions: questions.length,
+            totalQuestions: room.activeQuestions.length,
             myChoice: formatAnswer(p1.currentChoice, currentQ),
             otherChoice: formatAnswer(p2.currentChoice, currentQ)
         });
 
         io.to(p2.socketId).emit('roundResult', {
             isMatch,
+            textMatchRequired,
+            similarityPercent,
+            cumulativeSimilarity,
+            nextQuestionDelay: NEXT_QUESTION_DELAY,
             myScore: p2.score,
             matchedCount: p2.score / 10,
             questionNumber: currentQ.id,
-            totalQuestions: questions.length,
+            totalQuestions: room.activeQuestions.length,
             myChoice: formatAnswer(p2.currentChoice, currentQ),
             otherChoice: formatAnswer(p1.currentChoice, currentQ)
         });
@@ -319,20 +513,20 @@ socket.on('sendChat', (data) => {
         p2.currentChoice = null;
         room.currentQuestionIndex += 1;
 
-        if (room.currentQuestionIndex < questions.length) {
-            setTimeout(() => sendQuestion(roomInfo.roomCode), 5000);
+        if (room.currentQuestionIndex < room.activeQuestions.length) {
+            setTimeout(() => sendQuestion(roomInfo.roomCode), NEXT_QUESTION_DELAY);
         } else {
             setTimeout(() => {
                 io.to(roomInfo.roomCode).emit('gameOver', {
                     message: 'Trò chơi kết thúc! 🎉',
                     finalScore: p1.score,
                     secondScore: p2.score,
-                    similarity: Math.round((p1.score / (questions.length * 10)) * 100),
-                    totalQuestions: questions.length,
+                    similarity: Math.round((p1.score / (room.activeQuestions.length * 10)) * 100),
+                    totalQuestions: room.activeQuestions.length,
                     matchedCount: p1.score / 10
                 });
                 resetRoom(roomInfo.roomCode);
-            }, 5000);
+            }, NEXT_QUESTION_DELAY);
         }
     });
 

@@ -19,6 +19,9 @@ const loginMessage = document.getElementById('loginMessage');
 const loginScreen = document.getElementById('loginScreen');
 const gameLayout = document.getElementById('gameLayout');
 const statusDiv = document.getElementById('status');
+const modeSelectScreen = document.getElementById('modeSelectScreen');
+const modeDefaultBtn = document.getElementById('modeDefaultBtn');
+const modeAiBtn = document.getElementById('modeAiBtn');
 const gameDiv = document.getElementById('game');
 const fullScreenDiv = document.getElementById('fullScreen');
 const fullText = document.getElementById('fullText');
@@ -36,12 +39,14 @@ const bgMusic = document.getElementById('bgMusic');
 const musicToggle = document.getElementById('musicToggle');
 const ambientCanvas = document.getElementById('ambientCanvas');
 const cursorGlow = document.querySelector('.cursor-glow');
+const sceneWipe = document.getElementById('sceneWipe');
 const loginSpotlight = document.querySelector('.login-spotlight');
 const roomTransition = document.getElementById('roomTransition');
 const transitionBloom = document.querySelector('.transition-bloom');
 const transitionEyebrow = document.getElementById('transitionEyebrow');
 const transitionTitle = document.getElementById('transitionTitle');
 const transitionDetail = document.getElementById('transitionDetail');
+const answerButton = document.getElementById('submitBtn');
 
 const motion = { duration: 0.65, ease: 'power3.out', spring: 'back.out(1.7)' };
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -53,9 +58,69 @@ let stopParallaxMotion = () => {};
 let entranceObserver;
 let connectionTimeout;
 let activeRoomAction;
+let answerAudioContext;
+let answerAnalyser;
+let answerFrequencyData;
+let answerMusicFrame = 0;
+let answerMusicReady = false;
+let answerMusicEnergy = 0;
 
 function canAnimate() {
     return Boolean(window.gsap) && !prefersReducedMotion;
+}
+
+function initAnswerMusicSync() {
+    if (answerMusicReady || !bgMusic || !canAnimate()) return;
+    try {
+        answerAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        answerAnalyser = answerAudioContext.createAnalyser();
+        answerAnalyser.fftSize = 256;
+        answerAnalyser.smoothingTimeConstant = 0.88;
+        const source = answerAudioContext.createMediaElementSource(bgMusic);
+        source.connect(answerAnalyser);
+        answerAnalyser.connect(answerAudioContext.destination);
+        answerFrequencyData = new Uint8Array(answerAnalyser.frequencyBinCount);
+        answerMusicReady = true;
+        updateAnswerMusicMotion();
+    } catch (error) {
+        console.warn('Không thể đồng bộ nút với nhạc:', error);
+    }
+}
+
+function updateAnswerMusicMotion() {
+    if (!answerMusicReady || !answerAnalyser || !answerFrequencyData) return;
+    answerAnalyser.getByteFrequencyData(answerFrequencyData);
+    let bass = 0;
+    for (let index = 0; index < 12; index += 1) bass += answerFrequencyData[index];
+    const targetEnergy = Math.pow((bass / 12) / 255, 1.7);
+    answerMusicEnergy += (targetEnergy - answerMusicEnergy) * 0.12;
+    if (answerButton) {
+        answerButton.style.setProperty('--music-y', `${(-answerMusicEnergy * 4.5).toFixed(2)}px`);
+        answerButton.style.setProperty('--music-scale', (1 + answerMusicEnergy * 0.009).toFixed(4));
+        answerButton.style.setProperty('--music-rotate', `${(answerMusicEnergy * 0.45).toFixed(2)}deg`);
+        answerButton.style.setProperty('--music-glow', answerMusicEnergy.toFixed(3));
+    }
+    answerMusicFrame = requestAnimationFrame(updateAnswerMusicMotion);
+}
+
+function initAnswerPointerReflection() {
+    if (!answerButton || !finePointerQuery.matches) return;
+    answerButton.addEventListener('pointermove', (event) => {
+        if (!canAnimate() || event.pointerType !== 'mouse') return;
+        const bounds = answerButton.getBoundingClientRect();
+        answerButton.style.setProperty('--mouse-x', `${((event.clientX - bounds.left) / bounds.width) * 100}%`);
+        answerButton.style.setProperty('--mouse-y', `${((event.clientY - bounds.top) / bounds.height) * 100}%`);
+    }, { passive: true });
+    answerButton.addEventListener('pointerleave', () => {
+        answerButton.style.setProperty('--mouse-x', '50%');
+        answerButton.style.setProperty('--mouse-y', '50%');
+    });
+}
+
+function getImageProxyUrl(imageUrl) {
+    if (typeof imageUrl !== 'string' || !imageUrl.trim()) return '';
+    if (imageUrl.startsWith('/')) return imageUrl;
+    return `/image-proxy?url=${encodeURIComponent(imageUrl.trim())}`;
 }
 
 function runSceneIntro() {
@@ -74,11 +139,14 @@ function transitionScene(nextTargets) {
         return;
     }
     const outgoing = [qNumberBadge, questionText, inputContainer, resultDiv];
-    gsap.killTweensOf([...outgoing, ...nextTargets]);
+    gsap.killTweensOf([...outgoing, ...nextTargets, sceneWipe]);
     gsap.timeline({ defaults: { ease: motion.ease } })
+        .set(sceneWipe, { autoAlpha: 0.9, x: '-110%' })
         .to(outgoing, { autoAlpha: 0, y: -14, filter: 'blur(5px)', duration: 0.22, stagger: 0.025 })
+        .to(sceneWipe, { x: '110%', duration: 0.68, ease: 'power2.inOut' }, '-=0.08')
         .set(outgoing, { autoAlpha: 1, y: 0, clearProps: 'filter' })
-        .fromTo(nextTargets, { autoAlpha: 0, y: 28, scale: 0.97, filter: 'blur(10px)' }, { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.72, stagger: 0.07, ease: motion.spring, clearProps: 'filter' });
+        .fromTo(nextTargets, { autoAlpha: 0, y: 28, scale: 0.97, filter: 'blur(10px)' }, { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.72, stagger: 0.07, ease: motion.spring, clearProps: 'filter' }, '-=0.42')
+        .to(sceneWipe, { autoAlpha: 0, duration: 0.22, ease: 'power2.out' }, '-=0.12');
 }
 
 function pulseButton(button) {
@@ -91,6 +159,10 @@ function pulseButton(button) {
 function revealContent(targets) {
     if (!canAnimate() || !targets.length) return;
     gsap.fromTo(targets, { autoAlpha: 0, y: 22, filter: 'blur(8px)' }, { autoAlpha: 1, y: 0, filter: 'blur(0px)', duration: 0.72, stagger: 0.06, ease: motion.ease, clearProps: 'filter' });
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
 }
 
 function bindTilt(element) {
@@ -361,16 +433,19 @@ function handleMotionPreferenceChange(event) {
 }
 
 document.querySelectorAll('button').forEach(bindPressFeedback);
-document.querySelectorAll('.room-action, .chat-input-area button, .music-btn, #submitBtn').forEach(bindMagneticButton);
+document.querySelectorAll('.room-action, .chat-input-area button, .music-btn').forEach(bindMagneticButton);
 initCursorGlow();
 initLoginPointerTracking();
 initMotionSystem();
+initAnswerPointerReflection();
+bgMusic?.addEventListener('play', initAnswerMusicSync, { passive: true });
 reducedMotionQuery.addEventListener?.('change', handleMotionPreferenceChange);
 
 let currentRoomCode = '';
 let currentType = '';
 let currentAnswer = null;
 let isMusicPlaying = false;
+let nextQuestionCountdownTimer;
 
 const savedName = localStorage.getItem('couple_game_name');
 if (savedName) {
@@ -467,14 +542,38 @@ function cancelRoomTransition(message) {
 }
 
 function renderWaitingStatus(message, roomCode) {
-    statusDiv.innerHTML = `<div class="room-badge">Phòng ${roomCode || 'của bạn'}</div>
+    const safeRoomCode = roomCode || '';
+    statusDiv.innerHTML = `<button class="room-badge" type="button" data-room-code="${safeRoomCode}" aria-label="Sao chép mã phòng ${safeRoomCode || 'của bạn'}">Phòng ${safeRoomCode || 'của bạn'}<span class="room-copy-hint">⌘ Sao chép</span></button>
         <div class="waiting-scene">
             <div class="waiting-orbit" aria-hidden="true"><span class="waiting-avatar">💗</span><span class="waiting-avatar">✨</span><span class="waiting-spark">♡</span></div>
             <h3 class="waiting-copy">${message}</h3>
             <div class="waiting-progress" aria-hidden="true"><span></span></div>
             <p class="waiting-caption">Giữ trang này mở, người ấy sẽ xuất hiện ngay khi vào phòng.</p>
         </div>`;
+    const roomBadge = statusDiv.querySelector('.room-badge');
+    roomBadge?.addEventListener('click', () => copyRoomCode(roomBadge));
     revealContent([...statusDiv.children]);
+}
+
+async function copyRoomCode(roomBadge) {
+    const roomCode = roomBadge?.dataset.roomCode;
+    if (!roomCode) return;
+    try {
+        await navigator.clipboard.writeText(roomCode);
+    } catch {
+        roomCodeInput.focus();
+        roomCodeInput.select();
+        document.execCommand('copy');
+    }
+    roomBadge.classList.add('is-copied');
+    roomBadge.querySelector('.room-copy-hint').textContent = '✓ Đã sao chép';
+    if (canAnimate()) {
+        gsap.fromTo(roomBadge, { scale: 0.96 }, { scale: 1, duration: 0.5, ease: motion.spring, overwrite: 'auto' });
+    }
+    window.setTimeout(() => {
+        roomBadge.classList.remove('is-copied');
+        roomBadge.querySelector('.room-copy-hint').textContent = '⌘ Sao chép';
+    }, 1800);
 }
 
 function validateJoinInput(createNewRoom) {
@@ -538,6 +637,9 @@ resetBtn.addEventListener('click', () => {
     socket.emit('forceReset', { roomCode: currentRoomCode });
 });
 
+modeDefaultBtn.onclick = () => socket.emit('selectMode', { mode: 'default' });
+modeAiBtn.onclick = () => socket.emit('selectMode', { mode: 'ai' });
+
 socket.on('roomJoined', ({ roomCode, nickname }) => {
     currentRoomCode = roomCode;
     roomCodeInput.value = roomCode;
@@ -545,6 +647,7 @@ socket.on('roomJoined', ({ roomCode, nickname }) => {
     loginScreen.classList.add('hidden');
     gameLayout.classList.remove('hidden');
     statusDiv.style.display = 'block';
+    modeSelectScreen.style.display = 'none';
     gameDiv.style.display = 'none';
     fullScreenDiv.style.display = 'none';
     renderWaitingStatus(`Xin chào ${nickname}! Đang chờ người ấy vào đây...`, roomCode);
@@ -555,6 +658,7 @@ socket.on('roomJoined', ({ roomCode, nickname }) => {
 
 socket.on('waiting', (data) => {
     statusDiv.style.display = 'block';
+    modeSelectScreen.style.display = 'none';
     gameDiv.style.display = 'none';
     fullScreenDiv.style.display = 'none';
     renderWaitingStatus(data.message, currentRoomCode);
@@ -566,6 +670,7 @@ socket.on('full', (data) => {
     loginScreen.classList.remove('hidden');
     gameLayout.classList.add('hidden');
     statusDiv.style.display = 'none';
+    modeSelectScreen.style.display = 'none';
     fullScreenDiv.style.display = 'block';
     fullText.textContent = data.message;
 });
@@ -576,6 +681,28 @@ socket.on('roomError', (data) => {
     loginScreen.classList.remove('hidden');
     gameLayout.classList.add('hidden');
     statusDiv.style.display = 'none';
+    modeSelectScreen.style.display = 'none';
+});
+
+socket.on('showModeSelect', () => {
+    statusDiv.style.display = 'none';
+    gameDiv.style.display = 'none';
+    fullScreenDiv.style.display = 'none';
+    modeSelectScreen.style.display = 'block';
+    revealContent([...modeSelectScreen.children]);
+});
+
+socket.on('loadingQuestions', (data) => {
+    modeSelectScreen.style.display = 'none';
+    gameDiv.style.display = 'none';
+    statusDiv.style.display = 'block';
+    statusDiv.textContent = data?.message || 'Đang tải câu hỏi...';
+});
+
+socket.on('questionError', (data) => {
+    statusDiv.style.display = 'block';
+    statusDiv.textContent = data?.message || 'Không thể tải câu hỏi. Hãy chọn lại nhé.';
+    modeSelectScreen.style.display = 'block';
 });
 
 socket.on('gameStart', (data) => {
@@ -585,6 +712,9 @@ socket.on('gameStart', (data) => {
 });
 
 socket.on('newQuestion', (q) => {
+    clearNextQuestionCountdown();
+    modeSelectScreen.style.display = 'none';
+    gameDiv.classList.remove('is-final');
     statusDiv.style.display = 'none';
     gameDiv.style.display = 'block';
     fullScreenDiv.style.display = 'none';
@@ -592,6 +722,8 @@ socket.on('newQuestion', (q) => {
     waitMsg.style.display = 'none';
     submitBtn.style.display = 'block';
     submitBtn.disabled = false;
+    submitBtn.classList.remove('is-sending');
+    submitBtn.classList.add('is-ready');
 
     currentType = q.type;
     currentAnswer = q.type === 'multiple' ? [] : null;
@@ -606,9 +738,25 @@ socket.on('newQuestion', (q) => {
         q.options.forEach((opt) => {
             const card = document.createElement('div');
             card.className = 'option-card';
-            card.innerHTML = opt.image
-                ? `<img src="${opt.image}" alt="" class="option-image"><span>${opt.text}</span>`
-                : `<span>${opt.text}</span>`;
+            if (opt.image) {
+                card.classList.add('image-loading');
+                const image = document.createElement('img');
+                image.className = 'option-image';
+                image.src = getImageProxyUrl(opt.image);
+                image.alt = '';
+                image.loading = 'lazy';
+                image.decoding = 'async';
+                image.addEventListener('load', () => card.classList.remove('image-loading'), { once: true });
+                image.addEventListener('error', () => {
+                    image.remove();
+                    card.classList.remove('image-loading');
+                    card.classList.add('image-unavailable');
+                }, { once: true });
+                card.appendChild(image);
+            }
+            const optionText = document.createElement('span');
+            optionText.textContent = opt.text || '';
+            card.appendChild(optionText);
 
             card.addEventListener('click', () => {
                 if (q.type === 'single') {
@@ -630,8 +778,11 @@ socket.on('newQuestion', (q) => {
         transitionScene([qNumberBadge, questionText, ...inputContainer.children]);
     } else {
         inputContainer.className = 'grid-1-col';
-        inputContainer.innerHTML = '<input type="text" id="textInput" class="text-input" placeholder="Nhập biệt danh, lời nhắn, hoặc đáp án...">';
-        transitionScene([qNumberBadge, questionText, inputContainer.firstElementChild]);
+        const textRule = q.textMatchRequired === false
+            ? '<span class="text-rule free-rule">💭 Câu này không cần giống nhau, cứ viết điều bạn nghĩ.</span>'
+            : '<span class="text-rule match-rule">💞 Cùng nhập một đáp án xem hai bạn có tâm linh không nhé.</span>';
+        inputContainer.innerHTML = `<input type="text" id="textInput" class="text-input" placeholder="Nhập biệt danh, lời nhắn, hoặc đáp án...">${textRule}`;
+        transitionScene([qNumberBadge, questionText, ...inputContainer.children]);
     }
 });
 
@@ -651,6 +802,9 @@ submitBtn.addEventListener('click', () => {
         answer: currentAnswer
     });
 
+    submitBtn.classList.add('is-sending');
+    submitBtn.classList.remove('is-ready');
+
     const buttonRect = submitBtn.getBoundingClientRect();
     burstHearts({ x: buttonRect.left + buttonRect.width / 2, y: buttonRect.top + buttonRect.height / 2 });
 
@@ -661,12 +815,27 @@ submitBtn.addEventListener('click', () => {
 
 socket.on('roundResult', (data) => {
     waitMsg.style.display = 'none';
-    const roundSimilarity = data.isMatch ? 100 : 0;
+    submitBtn.classList.remove('is-sending');
+    const isFreeText = data.textMatchRequired === false;
+    const roundSimilarity = data.similarityPercent ?? (data.isMatch ? 100 : 0);
     const totalQuestions = data.totalQuestions || 14;
     const matchedCount = data.matchedCount ?? Math.round(data.myScore / 10);
-    const cumulativeSimilarity = Math.round((matchedCount / (data.questionNumber || 1)) * 100);
-    const resultTitle = data.isMatch ? 'Hai trái tim cùng nhịp! 💖' : 'Mỗi người một ý cũng đáng yêu mà! 🌷';
-    const resultMessage = data.isMatch ? 'Câu trả lời giống nhau hoàn toàn' : 'Câu này để dành dịp hiểu nhau hơn nhé';
+    const cumulativeSimilarity = data.cumulativeSimilarity ?? Math.round((matchedCount / (data.questionNumber || 1)) * 100);
+    let resultTitle = 'Mỗi người một ý cũng đáng yêu mà! 🌷';
+    if (isFreeText) resultTitle = 'Đọc câu trả lời của nhau nè! 💌';
+    else if (data.isMatch) resultTitle = 'Hai trái tim cùng nhịp! 💖';
+    else if (roundSimilarity > 0) resultTitle = 'Hai bạn vẫn có điểm chung! 🌷';
+    let resultMessage = `${roundSimilarity}% lựa chọn của hai bạn trùng nhau`;
+    if (isFreeText) resultMessage = 'Câu này không cần giống nhau, cứ thành thật là vui rồi!';
+    else if (data.isMatch) resultMessage = 'Câu trả lời giống nhau hoàn toàn';
+    const answerLabel = isFreeText ? ['Bạn viết', 'Người ấy viết'] : ['Bạn chọn', 'Người ấy chọn'];
+    const similarityMarkup = isFreeText
+        ? `<div class="free-text-reaction"><span>🫶</span><strong>Không chấm giống nhau</strong><small>Hai câu trả lời riêng, một kỷ niệm chung để cùng cười.</small></div>`
+        : `<div class="similarity-card" style="--similarity: ${roundSimilarity}%">
+            <div class="similarity-orbit" aria-hidden="true"><span>💞</span></div>
+            <div class="similarity-value" data-value="${roundSimilarity}">0<small>%</small></div>
+            <div class="similarity-label">Độ tương đồng câu này</div>
+        </div>`;
 
     resultDiv.innerHTML = `
         <div class="round-result-head ${data.isMatch ? 'is-match' : 'is-different'}">
@@ -674,26 +843,25 @@ socket.on('roundResult', (data) => {
             <h2>${resultTitle}</h2>
             <p>${resultMessage}</p>
         </div>
-        <div class="similarity-card" style="--similarity: ${roundSimilarity}%">
-            <div class="similarity-orbit" aria-hidden="true"><span>💞</span></div>
-            <div class="similarity-value" data-value="${roundSimilarity}">0<small>%</small></div>
-            <div class="similarity-label">Độ tương đồng câu này</div>
-        </div>
+        ${similarityMarkup}
         <div class="result-box answer-compare">
-            <div class="answer-line"><span class="answer-label">Bạn chọn</span><b>${data.myChoice}</b></div>
-            <div class="answer-line"><span class="answer-label">Người ấy chọn</span><b>${data.otherChoice}</b></div>
+            <div class="answer-line"><span class="answer-label">${answerLabel[0]}</span><b>${escapeHtml(data.myChoice)}</b></div>
+            <div class="answer-line"><span class="answer-label">${answerLabel[1]}</span><b>${escapeHtml(data.otherChoice)}</b></div>
             <div class="result-progress"><span style="--progress: ${cumulativeSimilarity}%"></span></div>
             <div class="progress-caption"><span>Độ tương đồng hiện tại</span><strong>${cumulativeSimilarity}%</strong></div>
         </div>
-        <div class="spinner" aria-label="Chuẩn bị câu tiếp theo"></div>`;
+        <div class="next-question-countdown" role="status" aria-live="polite">
+            <div class="countdown-copy"><span>Câu tiếp theo xuất hiện sau</span><strong data-countdown-value>6</strong><span>giây</span></div>
+            <div class="countdown-track" aria-hidden="true"><span data-countdown-progress></span></div>
+        </div>`;
     revealContent([...resultDiv.children]);
-    animateSimilarity(resultDiv.querySelector('.similarity-value'), roundSimilarity);
+    if (!isFreeText) animateSimilarity(resultDiv.querySelector('.similarity-value'), roundSimilarity);
+    startNextQuestionCountdown(data.nextQuestionDelay || 6000);
 });
 
 socket.on('gameOver', (data) => {
+    gameDiv.classList.add('is-final');
     const similarity = data.similarity ?? Math.round((data.finalScore / 10 / (data.totalQuestions || 14)) * 100);
-    const matchedCount = data.matchedCount ?? Math.round(data.finalScore / 10);
-    const totalQuestions = data.totalQuestions || 14;
     let summary = 'Càng chơi càng hiểu nhau hơn nhé! 🌱';
     if (similarity >= 80) summary = 'Hai bạn đúng là sinh ra để hiểu nhau! ✨';
     else if (similarity >= 50) summary = 'Một cặp đôi khá tâm linh đó nha! 💗';
@@ -707,7 +875,7 @@ socket.on('gameOver', (data) => {
                 <div class="similarity-ring" style="--similarity: ${similarity}%">
                     <div class="similarity-ring-inner"><strong data-value="${similarity}">0</strong><span>%</span></div>
                 </div>
-                <div class="final-score-copy"><span>ĐỘ TƯƠNG ĐỒNG</span><b>${matchedCount} câu trả lời cùng nhịp</b><small>Hai bạn đã cùng chọn một đáp án trong ${matchedCount} câu.</small></div>
+                <div class="final-score-copy"><span>ĐỘ TƯƠNG ĐỒNG</span><b>${similarity}% kết nối đồng điệu</b><small>Mỗi lựa chọn trùng nhau đều được tính vào kết quả chung của hai bạn.</small></div>
             </div>
             <div class="final-hearts" aria-hidden="true">💗 <i></i> 💞 <i></i> 💗</div>
         </div>`;
@@ -734,13 +902,41 @@ function animateSimilarity(element, target) {
     });
 }
 
+function clearNextQuestionCountdown() {
+    if (nextQuestionCountdownTimer) {
+        clearInterval(nextQuestionCountdownTimer);
+        nextQuestionCountdownTimer = undefined;
+    }
+}
+
+function startNextQuestionCountdown(duration) {
+    clearNextQuestionCountdown();
+    const valueElement = resultDiv.querySelector('[data-countdown-value]');
+    const progressElement = resultDiv.querySelector('[data-countdown-progress]');
+    if (!valueElement || !progressElement) return;
+
+    const startedAt = performance.now();
+    const update = () => {
+        const elapsed = performance.now() - startedAt;
+        const remaining = Math.max(0, duration - elapsed);
+        valueElement.textContent = Math.ceil(remaining / 1000);
+        progressElement.style.setProperty('--countdown-progress', `${(remaining / duration) * 100}%`);
+        if (remaining <= 0) clearNextQuestionCountdown();
+    };
+    update();
+    nextQuestionCountdownTimer = setInterval(update, 100);
+}
+
 function appendChat(text, type) {
     const div = document.createElement('div');
     div.className = `chat-msg ${type}`;
     div.innerText = text;
     chatMessages.appendChild(div);
     revealContent([div]);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    requestAnimationFrame(() => chatMessages.scrollTo({
+        top: chatMessages.scrollHeight,
+        behavior: 'smooth'
+    }));
 }
 
 sendChatBtn.addEventListener('click', () => {
@@ -767,12 +963,15 @@ socket.on('kicked', () => {
 });
 
 musicToggle.addEventListener('click', () => {
+    const musicLabel = musicToggle.querySelector('.music-label');
     if (isMusicPlaying) {
         bgMusic.pause();
-        musicToggle.textContent = '🎵 Bật nhạc';
+        musicLabel.textContent = 'Bật nhạc';
+        musicToggle.setAttribute('aria-label', 'Bật nhạc');
     } else {
         bgMusic.play().catch(() => {});
-        musicToggle.textContent = '🎶 Đang phát...';
+        musicLabel.textContent = 'Đang phát...';
+        musicToggle.setAttribute('aria-label', 'Tắt nhạc');
     }
     isMusicPlaying = !isMusicPlaying;
 });
@@ -781,7 +980,8 @@ document.body.addEventListener('click', () => {
     if (!isMusicPlaying) {
         bgMusic.play().then(() => {
             isMusicPlaying = true;
-            musicToggle.textContent = '🎶 Đang phát...';
+            musicToggle.querySelector('.music-label').textContent = 'Đang phát...';
+            musicToggle.setAttribute('aria-label', 'Tắt nhạc');
         }).catch(() => {});
     }
 }, { once: true });

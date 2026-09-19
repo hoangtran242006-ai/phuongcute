@@ -1,2 +1,6 @@
 node_modules/
 .DS_Store
+ai-questions-cache.json
+public/generated/
+node_modules/
+.env
